@@ -1,0 +1,104 @@
+#!/bin/sh
+
+# Script to run an application using a virtual X server (Xvfb) on Slackware
+
+set -e
+
+PROGNAME=run-virt-x
+SERVERNUM=99
+XVFBARGS="-screen 0 1280x1024x24"
+ERRORFILE=/tmp/xvfb.log
+APP_COMMAND=""
+XVFBPID=""
+
+# Display a usage message
+usage() {
+    cat <<EOF
+Usage: $PROGNAME [OPTIONS] -- COMMAND
+Run COMMAND (a graphical application) in a virtual X server environment.
+
+Options:
+  -n NUM      --server-num=NUM   X server number (default: $SERVERNUM)
+  -e FILE     --error-file=FILE  Log errors to FILE (default: $ERRORFILE)
+  -h          --help             Display this help message and exit.
+
+Examples:
+  $PROGNAME -n 101 -- firefox
+  $PROGNAME -- vlc
+
+EOF
+}
+
+# Clean up resources
+clean_up() {
+    if [ -n "$XVFBPID" ]; then
+        kill "$XVFBPID" >/dev/null 2>&1 || true
+    fi
+    echo "$PROGNAME: Cleaned up Xvfb server."
+}
+trap clean_up EXIT
+
+# Kill existing X server on the specified display
+kill_existing_server() {
+    echo "$PROGNAME: Checking for existing X server on display :$SERVERNUM..."
+    PID=$(ps aux | grep "Xvfb :$SERVERNUM" | grep -v grep | awk '{print $2}')
+    if [ -n "$PID" ]; then
+        echo "$PROGNAME: Killing existing X server with PID $PID."
+        kill "$PID" || true
+        sleep 1
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "$PROGNAME: Forcing termination of PID $PID."
+            kill -9 "$PID" || true
+        fi
+    fi
+
+    # Remove any stale lock or socket files
+    [ -f /tmp/.X"$SERVERNUM"-lock ] && rm -f /tmp/.X"$SERVERNUM"-lock
+    [ -S /tmp/.X11-unix/X"$SERVERNUM" ] && rm -f /tmp/.X11-unix/X"$SERVERNUM"
+    echo "$PROGNAME: Cleared existing X server resources on :$SERVERNUM."
+}
+
+# Parse options
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -n|--server-num) SERVERNUM="$2"; shift ;;
+        -e|--error-file) ERRORFILE="$2"; shift ;;
+        -h|--help) usage; exit 0 ;;
+        --) shift; APP_COMMAND="$*"; break ;;
+        *) echo "Unknown option: $1"; usage; exit 1 ;;
+    esac
+    shift
+done
+
+if [ -z "$APP_COMMAND" ]; then
+    echo "$PROGNAME: Error - no command provided to run."
+    usage
+    exit 1
+fi
+
+# Kill any existing X server and clean up resources
+kill_existing_server
+
+# Start Xvfb
+echo "$PROGNAME: Starting Xvfb on display :$SERVERNUM..."
+: > "$ERRORFILE" # Ensure error file exists
+Xvfb ":$SERVERNUM" $XVFBARGS -nolisten tcp >>"$ERRORFILE" 2>&1 &
+XVFBPID=$!
+sleep 1
+
+# Verify Xvfb started successfully
+if ! kill -0 "$XVFBPID" 2>/dev/null; then
+    echo "$PROGNAME: Failed to start Xvfb. Check $ERRORFILE for details."
+    exit 1
+fi
+echo "$PROGNAME: Xvfb started with PID $XVFBPID."
+
+# Set display and run application
+export DISPLAY=":$SERVERNUM"
+echo "$PROGNAME: Running command: $APP_COMMAND"
+$APP_COMMAND
+RETVAL=$?
+
+# Clean up and exit
+clean_up
+exit $RETVAL
