@@ -30,7 +30,7 @@ Features
 Usage
 Basic Command Format
 
-./run-virt-x [OPTIONS] -- COMMAND
+run-virt-x [OPTIONS] -- COMMAND
 
 Where COMMAND can be:
 
@@ -46,15 +46,15 @@ Options:
 Examples:
 Run a graphical application (e.g., Firefox) in a virtual X server:
 
-./run-virt-x -n 101 -- firefox
+run-virt-x -n 101 -- firefox
 
 Run CMake tests:
 
-./run-virt-x -n 101 -- ctest --test-dir build --output-on-failure
+run-virt-x -n 101 -- ctest --test-dir build --output-on-failure
 
 Run Meson tests:
 
-./run-virt-x -n 101 -- meson test -C build --output-on-failure
+run-virt-x -n 101 -- meson test -C build --output-on-failure
 
 Requirements
 
@@ -66,6 +66,7 @@ Requirements
 Installation
 
     Ensure that Xvfb, dbus, CMake, and Meson are installed on your system.
+    Place script to you $PATH, assume: (/usr/local/bin/)
     Make the script executable:
 
     chmod +x run-virt-x
