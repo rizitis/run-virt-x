@@ -91,7 +91,21 @@ The script performs the following steps:
 
     Cleans up:
         After running the command, the script cleans up by stopping the Xvfb server.
-
+---
+Example for cmake build:
+```
+cmake -B build -G Ninja \
+		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+-DCMAKE_INSTALL_DOCDIR=/usr/doc \
+-DCMAKE_INSTALL_MANDIR=/usr/man \
+		-DCMAKE_INSTALL_LIBDIR=lib64 \
+		-DKDEPIMADDONS_BUILD_EXAMPLES=OFF
+	cmake --build build
+run-virt-x -n 99 -- ctest --test-dir build --output-on-failure
+	DESTDIR="$PKG" cmake --install build
+```
+---
 Notes
 
     You can use this script to run tests or graphical applications that require an X server environment, even on headless machines.
