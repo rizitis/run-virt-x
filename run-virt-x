@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Script to run an application using a virtual X server (Xvfb) on Slackware
+# Script to run an application or tests using a virtual X server (Xvfb) on Slackware
 
 set -e
 
@@ -10,12 +10,13 @@ XVFBARGS="-screen 0 1280x1024x24"
 ERRORFILE=/tmp/xvfb.log
 APP_COMMAND=""
 XVFBPID=""
+BUILD_SYSTEM=""
 
 # Display a usage message
 usage() {
     cat <<EOF
 Usage: $PROGNAME [OPTIONS] -- COMMAND
-Run COMMAND (a graphical application) in a virtual X server environment.
+Run COMMAND (a graphical application or test) in a virtual X server environment.
 
 Options:
   -n NUM      --server-num=NUM   X server number (default: $SERVERNUM)
@@ -23,9 +24,8 @@ Options:
   -h          --help             Display this help message and exit.
 
 Examples:
-  $PROGNAME -n 101 -- firefox
-  $PROGNAME -- vlc
-
+  $PROGNAME -n 101 -- ctest --test-dir build --output-on-failure
+  $PROGNAME -n 101 -- meson test -C build --output-on-failure
 EOF
 }
 
@@ -64,7 +64,7 @@ while [ $# -gt 0 ]; do
         -n|--server-num) SERVERNUM="$2"; shift ;;
         -e|--error-file) ERRORFILE="$2"; shift ;;
         -h|--help) usage; exit 0 ;;
-        --) shift; APP_COMMAND="$*"; break ;;
+        --) shift; APP_COMMAND="$*"; break ;;  # Capture the rest of the command after --
         *) echo "Unknown option: $1"; usage; exit 1 ;;
     esac
     shift
@@ -73,6 +73,16 @@ done
 if [ -z "$APP_COMMAND" ]; then
     echo "$PROGNAME: Error - no command provided to run."
     usage
+    exit 1
+fi
+
+# Determine build system (CMake or Meson)
+if [ -f "CMakeLists.txt" ]; then
+    BUILD_SYSTEM="CMake"
+elif [ -f "meson.build" ]; then
+    BUILD_SYSTEM="Meson"
+else
+    echo "$PROGNAME: Error - Cannot detect a build system (CMake or Meson)."
     exit 1
 fi
 
@@ -96,7 +106,14 @@ echo "$PROGNAME: Xvfb started with PID $XVFBPID."
 # Set display and run application
 export DISPLAY=":$SERVERNUM"
 echo "$PROGNAME: Running command: $APP_COMMAND"
-$APP_COMMAND
+
+# Run appropriate test based on build system
+if [ "$BUILD_SYSTEM" = "CMake" ]; then
+    dbus-run-session -- ctest --test-dir build --output-on-failure
+elif [ "$BUILD_SYSTEM" = "Meson" ]; then
+    dbus-run-session -- meson test -C build --output-on-failure
+fi
+
 RETVAL=$?
 
 # Clean up and exit
