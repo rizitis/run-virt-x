@@ -97,8 +97,8 @@ Example for cmake build:
 cmake -B build -G Ninja \
 		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
 		-DCMAKE_INSTALL_PREFIX=/usr \
--DCMAKE_INSTALL_DOCDIR=/usr/doc \
--DCMAKE_INSTALL_MANDIR=/usr/man \
+                -DCMAKE_INSTALL_DOCDIR=/usr/doc \
+                -DCMAKE_INSTALL_MANDIR=/usr/man \
 		-DCMAKE_INSTALL_LIBDIR=lib64 \
 		-DKDEPIMADDONS_BUILD_EXAMPLES=OFF
 	cmake --build build
